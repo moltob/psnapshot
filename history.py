@@ -71,7 +71,7 @@ class FolderHistory:
 
         # get latest timestamp of existing backups:
         timestamp_backup = self._get_backup_time()
-        _logger.debug('Timestamp of backup: %s' % timestamp_backup)
+        _logger.debug('Timestamp of backup: {0}'.format(timestamp_backup))
 
         # get the latest modification time of the directory tree:
         for dirpath, dirnames, filenames in os.walk(self.srcdir):
@@ -80,7 +80,7 @@ class FolderHistory:
                 filepath = os.path.join(dirpath, filename)
                 timestamp_file = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
                 if timestamp_file > timestamp_backup:
-                    _logger.debug('Source dir contains a newer file, updated at %s: %s' % (timestamp_file, filepath))
+                    _logger.debug('Source dir contains a newer file, updated at {0}: {1}'.format(timestamp_file, filepath))
                     return True
 
         _logger.debug('No newer file found.')
@@ -95,26 +95,26 @@ class FolderHistory:
         passthrough = 1
         for spec in self.queue_specs:
             if not QUEUE_NAME_PATTERN.match(spec.name):
-                raise BackupQueueSpecError('Queue name does not match prescribed regex pattern "%s".' % QUEUE_NAME_PATTERN.pattern)
+                raise BackupQueueSpecError('Queue name does not match prescribed regex pattern "{0}".'.format(QUEUE_NAME_PATTERN.pattern))
 
             if not spec.age >= passthrough:
-                raise BackupQueueSpecError('Queue %s has minimum age of %d days, but backups already take %d days '
-                                           'to get through previous queue.' % (spec.name, spec.age, passthrough))
+                raise BackupQueueSpecError('Queue %s has minimum age of {0} days, but backups already take {1} days '
+                                           'to get through previous queue.'.format(spec.name, spec.age, passthrough))
             passthrough = spec.age * spec.length
 
         if not passthrough > 0:
-            raise BackupQueueSpecError('Last queue has invalid passthrough time of %d days.' % passthrough)
+            raise BackupQueueSpecError('Last queue has invalid passthrough time of {0} days.'.format(passthrough))
 
     def _prepare_directories(self):
         """Checks directories used as input and output and creates output folder on demand."""
 
         if not os.path.exists(self.srcdir) or not os.path.isdir(self.srcdir):
-            raise SourceDirError('%s is not a valid directory to backup from.' % self.srcdir)
+            raise SourceDirError('{0} is not a valid directory to backup from.'.format(self.srcdir))
         if os.path.exists(self.dstdir):
             if not os.path.isdir(self.dstdir):
-                raise DestinationDirError('%s exists but is not a valid directory to backup to.' % self.dstdir)
+                raise DestinationDirError('{0} exists but is not a valid directory to backup to.'.format(self.dstdir))
         else:
-            _logger.info('Creating output directory %s.' % self.dstdir)
+            _logger.info('Creating output directory {0}.'.format(self.dstdir))
             os.makedirs(self.dstdir)
 
     def _link_source(self):
@@ -131,14 +131,14 @@ class FolderHistory:
                 m = BACKUP_DIR_NAME_PATTERN.match(entry)
                 if m:
                     backup = Backup(entry, *m.groups())
-                    _logger.debug('Found existing backup %s.' % str(backup))
+                    _logger.debug('Found existing backup {0}.'.format(str(backup)))
                     self.backups.append(backup)
 
         # sort by timestamp from newest to oldest backup:
         self.backups = sorted(self.backups, key=lambda b: b.timestamp, reverse=True)
 
         if self.backups:
-            _logger.info('Found %d backups with latest modification timestamp %s.' % (len(self.backups), self.backups[0]))
+            _logger.info('Found {0} backups with latest modification timestamp {1}.'.format(len(self.backups), self.backups[0]))
         else:
             _logger.info('No previous backups found.')
 
