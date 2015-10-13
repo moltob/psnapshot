@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import re
+import datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -56,14 +57,33 @@ class FolderHistory:
         self._verify_queue_specs()
         self._prepare_directories()
         self._find_backups()
-        if self.srcdir_content_updated:
+        if self.srcdir_modified:
             self._link_source()
             self._update_queues()
 
     @property
-    def srcdir_content_updated(self):
-        """Checks if the source directory has any file that is newer than the latest queue entry."""
+    def srcdir_modified(self):
+        """Checks if the source directory has any file that is newer than the latest backup."""
 
+        # if there is nothing to compare to, we are always out of date:
+        if not self.backups:
+            return True
+
+        # get latest timestamp of existing backups:
+        timestamp_backup = self._get_backup_time()
+        _logger.debug('Timestamp of backup: %s' % timestamp_backup)
+
+        # get the latest modification time of the directory tree:
+        for dirpath, dirnames, filenames in os.walk(self.srcdir):
+            # only interested in files:
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                timestamp_file = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
+                if timestamp_file > timestamp_backup:
+                    _logger.debug('Source dir contains a newer file, updated at %s: %s' % (timestamp_file, filepath))
+                    return True
+
+        _logger.debug('No newer file found.')
         return False
 
     def _verify_queue_specs(self):
@@ -110,10 +130,27 @@ class FolderHistory:
             if os.path.isdir(os.path.join(self.dstdir, entry)):
                 m = BACKUP_DIR_NAME_PATTERN.match(entry)
                 if m:
-                    self.backups.append(Backup(entry, *m.groups()))
+                    backup = Backup(entry, *m.groups())
+                    _logger.debug('Found existing backup %s.' % str(backup))
+                    self.backups.append(backup)
 
         # sort by timestamp from newest to oldest backup:
         self.backups = sorted(self.backups, key=lambda b: b.timestamp, reverse=True)
 
+        if self.backups:
+            _logger.info('Found %d backups with latest modification timestamp %s.' % (len(self.backups), self.backups[0]))
+        else:
+            _logger.info('No previous backups found.')
+
     def _update_queues(self):
         pass
+
+    def _get_backup_time(self):
+        """Returns newest backup's timestamp."""
+        timestamp_text = self.backups[0].timestamp
+        year = int(timestamp_text[0:4])
+        month = int(timestamp_text[4:6])
+        day = int(timestamp_text[6:8])
+        hour = int(timestamp_text[8:10])
+        minute = int(timestamp_text[10:12])
+        return datetime.datetime(year, month, day, hour, minute)
