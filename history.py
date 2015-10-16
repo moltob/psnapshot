@@ -15,7 +15,7 @@ BACKUP_DIR_NAME_PATTERN = re.compile(r'''
         \w+             # Queue name
     )
     -
-    (?P<timestamp>      # Timestamp
+    (?P<timestamp>
         \d{4}           # Year
         \d{2}           # Month
         \d{2}           # Day
