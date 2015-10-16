@@ -60,8 +60,8 @@ class FolderHistory:
         self._verify_queue_specs()
         self._prepare_directories()
         self._find_backups()
-        if self.srcdir_timestamp:
-            self._link_source()
+        if self.srcdir_updated:
+            linked_dir = self._link_source()
             self._update_queues()
 
     @property
@@ -143,10 +143,22 @@ class FolderHistory:
     def _link_source(self):
         """Hard-links source to a new timestamped directory in destination."""
 
-        _logger.info('Creating hard-linked snapshot of source directory.')
-        linked_dirname = '{queue}-{year}{month}{day}{hour}{minute}'.format(
-            queue=self.queue_specs[0].name
-        )
+        linked_dirname = '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=self.queue_specs[0].name, ts=self.srcdir_timestamp)
+        _logger.info('Creating hard-linked snapshot of source directory in backup directory {}.'.format(linked_dirname))
+
+        linked_dirpath = os.path.join(self.dstdir, linked_dirname)
+
+        try:
+            shutil.copytree(self.srcdir, linked_dirpath, copy_function=os.link)
+            _logger.info('Hard-linked copy complete.')
+
+            # remember successful backup:
+            self.backups.insert(0, Backup(linked_dirname, self.queue_specs[0].name, self.srcdir_timestamp))
+            self._backup_timestamp = self._srcdir_timestamp
+        except shutil.Error as e:
+            _logger.error('Creation of hard-linked tree copy failed: {}'.format(e))
+            _logger.debug('Trying to clean up invalid copy.')
+            shutil.rmtree(linked_dirpath, ignore_errors=True)
 
     def _find_backups(self):
         """Reads current backups from filesystem."""

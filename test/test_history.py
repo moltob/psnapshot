@@ -150,7 +150,7 @@ def test_source_dir_modified_second_file_newer(mock_os):
     h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '201502030405')]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
-    mock_os.path.join = mock.MagicMock(side_effect=lambda dir, filename: filename)
+    mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
 
     mtime_by_file = {
         mock.sentinel.FILENAME1: datetime.datetime(2014, 1, 1).timestamp(),  # older
@@ -168,7 +168,7 @@ def test_source_dir_modified_files_older(mock_os):
     h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '201502030405')]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
-    mock_os.path.join = mock.MagicMock(side_effect=lambda dir, filename: filename)
+    mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
 
     mtime_by_file = {
         mock.sentinel.FILENAME1: datetime.datetime(2014, 1, 1).timestamp(),
@@ -178,3 +178,50 @@ def test_source_dir_modified_files_older(mock_os):
 
     assert not h.srcdir_updated
     assert mock_os.path.getmtime.call_count == 2
+
+
+@mock.patch('history.shutil')
+@mock.patch('history.os')
+def test_link_source_error(mock_os, mock_shutil):
+    class MockException(Exception):
+        pass
+
+    mock_shutil.Error = MockException
+    mock_shutil.copytree = mock.MagicMock(side_effect=MockException)
+    mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
+    mock_os.link = mock.sentinel.OS_LINK
+
+    s1 = BackupQueueSpec('name1', age=10, length=2)
+    s2 = BackupQueueSpec('name2', age=20, length=1)
+    h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [s1, s2])
+    h._srcdir_timestamp = datetime.datetime(2015, 1, 1)
+    h.backups = []
+    h._backup_timestamp = mock.sentinel.OLD_BACKUP_TIMESTAMP
+
+    h._link_source()
+
+    mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
+    assert h.backup_timestamp is mock.sentinel.OLD_BACKUP_TIMESTAMP
+    assert len(h.backups) == 0
+
+
+@mock.patch('history.shutil')
+@mock.patch('history.os')
+def test_link_source_ok(mock_os, mock_shutil):
+    mock_shutil.copytree = mock.MagicMock(return_value=mock.sentinel.NEW_DESTINATION_PATH)
+    mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
+    mock_os.link = mock.sentinel.OS_LINK
+
+    s1 = BackupQueueSpec('name1', age=10, length=2)
+    s2 = BackupQueueSpec('name2', age=20, length=1)
+    h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [s1, s2])
+    h._srcdir_timestamp = datetime.datetime(2015, 1, 1)
+    h.backups = []
+    h._backup_timestamp = mock.sentinel.OLD_BACKUP_TIMESTAMP
+
+    h._link_source()
+
+    mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
+    assert h.backup_timestamp is h.srcdir_timestamp
+    assert len(h.backups) == 1
+    assert h.backups[0].queue == 'name1'
