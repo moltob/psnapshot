@@ -49,7 +49,10 @@ class FolderHistory:
         self.queue_specs = queue_specs
 
         #: List of existing backup directories in dstdir.
-        self.backups = []
+        self.backups = None
+
+        self._srcdir_timestamp = None
+        self._backup_timestamp = None
 
     def backup(self):
         """Main driver of the folder backup operation."""
@@ -57,34 +60,54 @@ class FolderHistory:
         self._verify_queue_specs()
         self._prepare_directories()
         self._find_backups()
-        if self.srcdir_modified:
+        if self.srcdir_timestamp:
             self._link_source()
             self._update_queues()
 
     @property
-    def srcdir_modified(self):
-        """Checks if the source directory has any file that is newer than the latest backup."""
+    def backup_timestamp(self):
+        """Timestamp of newest backup."""
 
-        # if there is nothing to compare to, we are always out of date:
-        if not self.backups:
-            return True
+        if not self._backup_timestamp:
+            if self.backups is None:
+                self._find_backups()
 
-        # get latest timestamp of existing backups:
-        timestamp_backup = self._get_backup_time()
-        _logger.debug('Timestamp of backup: {0}'.format(timestamp_backup))
+            if self.backups:
+                # get latest timestamp of existing backups:
+                timestamp_text = self.backups[0].timestamp
+                year = int(timestamp_text[0:4])
+                month = int(timestamp_text[4:6])
+                day = int(timestamp_text[6:8])
+                hour = int(timestamp_text[8:10])
+                minute = int(timestamp_text[10:12])
+                self._backup_timestamp = datetime.datetime(year, month, day, hour, minute)
+                _logger.debug('Timestamp of backup: {0}'.format(self._backup_timestamp))
+            else:
+                _logger.debug('No existing backup found, no timestamp determined.')
 
-        # get the latest modification time of the directory tree:
-        for dirpath, dirnames, filenames in os.walk(self.srcdir):
-            # only interested in files:
-            for filename in filenames:
-                filepath = os.path.join(dirpath, filename)
-                timestamp_file = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
-                if timestamp_file > timestamp_backup:
-                    _logger.debug('Source dir contains a newer file, updated at {0}: {1}'.format(timestamp_file, filepath))
-                    return True
+        return self._backup_timestamp
 
-        _logger.debug('No newer file found.')
-        return False
+    @property
+    def srcdir_timestamp(self):
+        """Timestamp of newest file in source directory."""
+
+        if not self._srcdir_timestamp:
+            # get the latest modification time of the directory tree:
+            for dirpath, dirnames, filenames in os.walk(self.srcdir):
+                # only interested in files:
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+                    timestamp_file = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
+                    if not self._srcdir_timestamp or timestamp_file > self._srcdir_timestamp:
+                        _logger.debug('Source dir contains a file, updated at {0}: {1}'.format(timestamp_file, filepath))
+                        self._srcdir_timestamp = timestamp_file
+
+        return self._srcdir_timestamp
+
+    @property
+    def srcdir_updated(self):
+        """Flag whether a file in the source dir has a newer timestamp than the last backup."""
+        return not self.backup_timestamp or self.backup_timestamp < self.srcdir_timestamp
 
     def _verify_queue_specs(self):
         """Ensures the specification of the backup queues are consistent and reasonable."""
@@ -121,10 +144,14 @@ class FolderHistory:
         """Hard-links source to a new timestamped directory in destination."""
 
         _logger.info('Creating hard-linked snapshot of source directory.')
-        linked_dirname = ''
+        linked_dirname = '{queue}-{year}{month}{day}{hour}{minute}'.format(
+            queue=self.queue_specs[0].name
+        )
 
     def _find_backups(self):
         """Reads current backups from filesystem."""
+
+        self.backups = []
 
         for entry in os.listdir(self.dstdir):
             if os.path.isdir(os.path.join(self.dstdir, entry)):
@@ -144,13 +171,3 @@ class FolderHistory:
 
     def _update_queues(self):
         pass
-
-    def _get_backup_time(self):
-        """Returns newest backup's timestamp."""
-        timestamp_text = self.backups[0].timestamp
-        year = int(timestamp_text[0:4])
-        month = int(timestamp_text[4:6])
-        day = int(timestamp_text[6:8])
-        hour = int(timestamp_text[8:10])
-        minute = int(timestamp_text[10:12])
-        return datetime.datetime(year, month, day, hour, minute)

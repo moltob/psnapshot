@@ -141,12 +141,7 @@ def test_find_backups(mock_os):
 def test_get_backup_time():
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
     h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '197202171552')]
-    assert h._get_backup_time() == datetime.datetime(1972, 2, 17, 15, 52)
-
-
-def test_source_dir_modified_no_backup():
-    h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    assert h.srcdir_modified
+    assert h.backup_timestamp == datetime.datetime(1972, 2, 17, 15, 52)
 
 
 @mock.patch('history.os')
@@ -163,7 +158,7 @@ def test_source_dir_modified_second_file_newer(mock_os):
     }
     mock_os.path.getmtime = mock.MagicMock(side_effect=lambda filename: mtime_by_file[filename])
 
-    assert h.srcdir_modified
+    assert h.srcdir_timestamp
     assert mock_os.path.getmtime.call_count == 2
 
 
@@ -181,5 +176,5 @@ def test_source_dir_modified_files_older(mock_os):
     }
     mock_os.path.getmtime = mock.MagicMock(side_effect=lambda filename: mtime_by_file[filename])
 
-    assert not h.srcdir_modified
+    assert not h.srcdir_updated
     assert mock_os.path.getmtime.call_count == 2
