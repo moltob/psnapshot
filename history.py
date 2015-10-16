@@ -9,7 +9,22 @@ import datetime
 _logger = logging.getLogger(__name__)
 
 QUEUE_NAME_PATTERN = re.compile(r'^\w+$')
-BACKUP_DIR_NAME_PATTERN = re.compile(r'^(?P<queue>\w+)-(?P<timestamp>\d{4}\d{2}\d{2}\d{2}\d{2}\d{2})$')
+BACKUP_DIR_NAME_PATTERN = re.compile(r'''
+    ^
+    (?P<queue>
+        \w+             # Queue name
+    )
+    -
+    (?P<timestamp>      # Timestamp
+        \d{4}           # Year
+        \d{2}           # Month
+        \d{2}           # Day
+        \d{2}           # Hour
+        \d{2}           # Minute
+        \d{2}           # Seconds
+    )
+    $
+''', re.VERBOSE)
 
 
 class BackupQueueSpecError(Exception): pass
