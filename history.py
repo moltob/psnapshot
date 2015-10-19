@@ -95,7 +95,8 @@ class FolderHistory:
                 day = int(timestamp_text[6:8])
                 hour = int(timestamp_text[8:10])
                 minute = int(timestamp_text[10:12])
-                self._backup_timestamp = datetime.datetime(year, month, day, hour, minute)
+                second = int(timestamp_text[12:14])
+                self._backup_timestamp = datetime.datetime(year, month, day, hour, minute, second)
                 _logger.debug('Timestamp of backup: {0}'.format(self._backup_timestamp))
             else:
                 _logger.debug('No existing backup found, no timestamp determined.')
@@ -113,9 +114,18 @@ class FolderHistory:
                 for filename in filenames:
                     filepath = os.path.join(dirpath, filename)
                     timestamp_file = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
+
+                    # round off to secs:
+                    timestamp_file = datetime.datetime(year=timestamp_file.year,
+                                                       month=timestamp_file.month,
+                                                       day=timestamp_file.day,
+                                                       hour=timestamp_file.hour,
+                                                       minute=timestamp_file.minute,
+                                                       second=timestamp_file.second)
+
                     if not self._srcdir_timestamp or timestamp_file > self._srcdir_timestamp:
                         _logger.debug('Source dir contains a file, updated at {0}: {1}'.format(timestamp_file, filepath))
-                        self._srcdir_timestamp = timestamp_file
+                    self._srcdir_timestamp = timestamp_file
 
         return self._srcdir_timestamp
 

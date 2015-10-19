@@ -140,14 +140,14 @@ def test_find_backups(mock_os):
 
 def test_get_backup_time():
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '197202171552')]
-    assert h.backup_timestamp == datetime.datetime(1972, 2, 17, 15, 52)
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '19720217155215')]
+    assert h.backup_timestamp == datetime.datetime(1972, 2, 17, 15, 52, 15)
 
 
 @mock.patch('history.os')
 def test_source_dir_modified_second_file_newer(mock_os):
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '201502030405')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040506')]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
     mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
@@ -159,13 +159,14 @@ def test_source_dir_modified_second_file_newer(mock_os):
     mock_os.path.getmtime = mock.MagicMock(side_effect=lambda filename: mtime_by_file[filename])
 
     assert h.srcdir_timestamp
+    assert h.srcdir_updated
     assert mock_os.path.getmtime.call_count == 2
 
 
 @mock.patch('history.os')
 def test_source_dir_modified_files_older(mock_os):
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '201502030405')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040517')]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
     mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
@@ -225,3 +226,20 @@ def test_link_source_ok(mock_os, mock_shutil):
     assert h.backup_timestamp is h.srcdir_timestamp
     assert len(h.backups) == 1
     assert h.backups[0].queue == 'name1'
+
+
+@mock.patch('history.os')
+def test_timestamps_rounded_days(mock_os):
+    h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040506')]
+
+    mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME])])
+    mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
+
+    mtime_by_file = {
+        mock.sentinel.FILENAME: datetime.datetime(2015, 2, 3, 4, 5, 6, microsecond=10).timestamp()
+    }
+    mock_os.path.getmtime = mock.MagicMock(side_effect=lambda filename: mtime_by_file[filename])
+
+    assert h.srcdir_timestamp
+    assert not h.srcdir_updated
