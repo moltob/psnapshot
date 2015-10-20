@@ -43,6 +43,38 @@ BackupQueueSpec = collections.namedtuple('BackupQueueSpec', ['name', 'age', 'len
 Backup = collections.namedtuple('Backup', ['name', 'queue', 'timestamp'])
 
 
+class BackupTime:
+    """Timestamp of a backup folder, resolution of one second."""
+
+    #: Length of timestamp text representation.
+    TIMESTAMP_TEXT_LEN = 14
+
+    def __init__(self, timestamp: datetime.datetime):
+        self.timestamp = timestamp
+
+    def __repr__(self):
+        return '{ts:%Y%m%d%H%M%S}'.format(ts=self.timestamp)
+
+    @property
+    def text(self):
+        return str(self)
+
+    @classmethod
+    def fromtext(cls, text):
+        """Creates new timestamp instance from text representation."""
+        if not text or len(text) != cls.TIMESTAMP_TEXT_LEN:
+            raise ValueError('text representation {} has unexpected format'.format(text))
+
+        year = int(text[0:4])
+        month = int(text[4:6])
+        day = int(text[6:8])
+        hour = int(text[8:10])
+        minute = int(text[10:12])
+        second = int(text[12:14])
+
+        return cls(datetime.datetime(year, month, day, hour, minute, second))
+
+
 class FolderHistory:
     """History of a folder via hardlinks, assuming the source files are _not_ changed in-place.
 

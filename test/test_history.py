@@ -1,7 +1,7 @@
 from unittest import mock
 import datetime
 import pytest
-from history import BackupQueueSpec, FolderHistory, BackupQueueSpecError, SourceDirError, DestinationDirError, Backup
+from history import BackupQueueSpec, FolderHistory, BackupQueueSpecError, SourceDirError, DestinationDirError, Backup, BackupTime
 
 
 def test_backup_queue_spec():
@@ -243,3 +243,15 @@ def test_timestamps_rounded_days(mock_os):
 
     assert h.srcdir_timestamp
     assert not h.srcdir_updated
+
+
+def test_backup_time_text():
+    t = BackupTime(datetime.datetime(2015, 1, 2, 3, 4, 5))
+    assert t.text == '20150102030405'
+    assert str(t) == t.text
+
+
+def test_backup_time_fromtext():
+    t = BackupTime.fromtext('20150910111213')
+    assert t.timestamp == datetime.datetime(2015, 9, 10, 11, 12, 13)
+    assert t.text == '20150910111213'
