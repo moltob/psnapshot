@@ -15,13 +15,8 @@ BACKUP_DIR_NAME_PATTERN = re.compile(r'''
         \w+             # Queue name
     )
     -
-    (?P<timestamp>
-        \d{4}           # Year
-        \d{2}           # Month
-        \d{2}           # Day
-        \d{2}           # Hour
-        \d{2}           # Minute
-        \d{2}           # Seconds
+    (?P<timestamptext>
+        \d{14}          # Year, Month, Day, Hour, Minute, Second
     )
     $
 ''', re.VERBOSE)
@@ -40,20 +35,21 @@ class DestinationDirError(Exception): pass
 BackupQueueSpec = collections.namedtuple('BackupQueueSpec', ['name', 'age', 'length'])
 
 #: Existing backup on disk.
-Backup = collections.namedtuple('Backup', ['name', 'queue', 'timestamp'])
+Backup = collections.namedtuple('Backup', ['name', 'queue', 'time'])
 
 
 class BackupTime:
     """Timestamp of a backup folder, resolution of one second."""
 
     #: Length of timestamp text representation.
-    TIMESTAMP_TEXT_LEN = 14
+    TEXT_LEN = 14
 
-    def __init__(self, timestamp: datetime.datetime):
-        self.timestamp = timestamp
+    def __init__(self, stamp):
+        assert isinstance(stamp, datetime.datetime)
+        self.stamp = stamp
 
     def __repr__(self):
-        return '{ts:%Y%m%d%H%M%S}'.format(ts=self.timestamp)
+        return '{ts:%Y%m%d%H%M%S}'.format(ts=self.stamp)
 
     @property
     def text(self):
@@ -61,8 +57,8 @@ class BackupTime:
 
     @classmethod
     def fromtext(cls, text):
-        """Creates new timestamp instance from text representation."""
-        if not text or len(text) != cls.TIMESTAMP_TEXT_LEN:
+        """Creates new instance from text representation."""
+        if not text or len(text) != cls.TEXT_LEN:
             raise ValueError('text representation {} has unexpected format'.format(text))
 
         year = int(text[0:4])
@@ -73,6 +69,12 @@ class BackupTime:
         second = int(text[12:14])
 
         return cls(datetime.datetime(year, month, day, hour, minute, second))
+
+    def __gt__(self, other):
+        return self.stamp > other.stamp
+
+    def __eq__(self, other):
+        return self.stamp == other.stamp
 
 
 class FolderHistory:
@@ -99,7 +101,6 @@ class FolderHistory:
         self.backups = None
 
         self._srcdir_timestamp = None
-        self._backup_timestamp = None
 
     def backup(self):
         """Main driver of the folder backup operation."""
@@ -115,25 +116,13 @@ class FolderHistory:
     def backup_timestamp(self):
         """Timestamp of newest backup."""
 
-        if not self._backup_timestamp:
-            if self.backups is None:
-                self._find_backups()
+        if self.backups is None:
+            self._find_backups()
 
-            if self.backups:
-                # get latest timestamp of existing backups:
-                timestamp_text = self.backups[0].timestamp
-                year = int(timestamp_text[0:4])
-                month = int(timestamp_text[4:6])
-                day = int(timestamp_text[6:8])
-                hour = int(timestamp_text[8:10])
-                minute = int(timestamp_text[10:12])
-                second = int(timestamp_text[12:14])
-                self._backup_timestamp = datetime.datetime(year, month, day, hour, minute, second)
-                _logger.debug('Timestamp of backup: {0}'.format(self._backup_timestamp))
-            else:
-                _logger.debug('No existing backup found, no timestamp determined.')
-
-        return self._backup_timestamp
+        if self.backups:
+            return self.backups[0].time.stamp
+        else:
+            return None
 
     @property
     def srcdir_timestamp(self):
@@ -210,8 +199,7 @@ class FolderHistory:
             _logger.info('Hard-linked copy complete.')
 
             # remember successful backup:
-            self.backups.insert(0, Backup(linked_dirname, self.queue_specs[0].name, self.srcdir_timestamp))
-            self._backup_timestamp = self._srcdir_timestamp
+            self.backups.insert(0, Backup(linked_dirname, self.queue_specs[0].name, BackupTime(self.srcdir_timestamp)))
         except shutil.Error as e:
             _logger.error('Creation of hard-linked tree copy failed: {}'.format(e))
             _logger.debug('Trying to clean up invalid copy.')
@@ -226,12 +214,12 @@ class FolderHistory:
             if os.path.isdir(os.path.join(self.dstdir, entry)):
                 m = BACKUP_DIR_NAME_PATTERN.match(entry)
                 if m:
-                    backup = Backup(entry, *m.groups())
+                    backup = Backup(entry, queue=m.group('queue'), time=BackupTime.fromtext(m.group('timestamptext')))
                     _logger.debug('Found existing backup {0}.'.format(str(backup)))
                     self.backups.append(backup)
 
         # sort by timestamp from newest to oldest backup:
-        self.backups = sorted(self.backups, key=lambda b: b.timestamp, reverse=True)
+        self.backups = sorted(self.backups, key=lambda b: b.time, reverse=True)
 
         if self.backups:
             _logger.info('Found {0} backups with latest modification timestamp {1}.'.format(len(self.backups), self.backups[0]))

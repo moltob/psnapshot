@@ -133,21 +133,21 @@ def test_find_backups(mock_os):
 
     # backups must be ordered from newest to oldest:
     assert len(h.backups) == 3
-    assert h.backups[0] == Backup('other-20151013070801', 'other', '20151013070801')
-    assert h.backups[1] == Backup('some-20151013070800', 'some', '20151013070800')
-    assert h.backups[2] == Backup('third_one-20150101000000', 'third_one', '20150101000000')
+    assert h.backups[0] == Backup('other-20151013070801', 'other', BackupTime.fromtext('20151013070801'))
+    assert h.backups[1] == Backup('some-20151013070800', 'some', BackupTime.fromtext('20151013070800'))
+    assert h.backups[2] == Backup('third_one-20150101000000', 'third_one', BackupTime.fromtext('20150101000000'))
 
 
 def test_get_backup_time():
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '19720217155215')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('19720217155215'))]
     assert h.backup_timestamp == datetime.datetime(1972, 2, 17, 15, 52, 15)
 
 
 @mock.patch('history.os')
 def test_source_dir_modified_second_file_newer(mock_os):
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040506')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('20150203040506'))]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
     mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
@@ -166,7 +166,7 @@ def test_source_dir_modified_second_file_newer(mock_os):
 @mock.patch('history.os')
 def test_source_dir_modified_files_older(mock_os):
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040517')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('20150203040517'))]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME1, mock.sentinel.FILENAME2])])
     mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
@@ -196,14 +196,14 @@ def test_link_source_error(mock_os, mock_shutil):
     s2 = BackupQueueSpec('name2', age=20, length=1)
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [s1, s2])
     h._srcdir_timestamp = datetime.datetime(2015, 1, 1)
-    h.backups = []
-    h._backup_timestamp = mock.sentinel.OLD_BACKUP_TIMESTAMP
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('20150203040517'))]
+    backuptime = h.backup_timestamp
 
     h._link_source()
 
     mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
-    assert h.backup_timestamp is mock.sentinel.OLD_BACKUP_TIMESTAMP
-    assert len(h.backups) == 0
+    assert h.backup_timestamp is backuptime
+    assert len(h.backups) == 1
 
 
 @mock.patch('history.shutil')
@@ -217,21 +217,20 @@ def test_link_source_ok(mock_os, mock_shutil):
     s2 = BackupQueueSpec('name2', age=20, length=1)
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [s1, s2])
     h._srcdir_timestamp = datetime.datetime(2015, 1, 1)
-    h.backups = []
-    h._backup_timestamp = mock.sentinel.OLD_BACKUP_TIMESTAMP
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('20150203040517'))]
 
     h._link_source()
 
     mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
     assert h.backup_timestamp is h.srcdir_timestamp
-    assert len(h.backups) == 1
+    assert len(h.backups) == 2
     assert h.backups[0].queue == 'name1'
 
 
 @mock.patch('history.os')
 def test_timestamps_rounded_days(mock_os):
     h = FolderHistory(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, mock.sentinel.QUEUES)
-    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, '20150203040506')]
+    h.backups = [Backup(mock.sentinel.NAME, mock.sentinel.QUEUE, BackupTime.fromtext('20150203040506'))]
 
     mock_os.walk = mock.MagicMock(return_value=[(h.srcdir, [], [mock.sentinel.FILENAME])])
     mock_os.path.join = mock.MagicMock(side_effect=lambda d, filename: filename)
@@ -253,5 +252,5 @@ def test_backup_time_text():
 
 def test_backup_time_fromtext():
     t = BackupTime.fromtext('20150910111213')
-    assert t.timestamp == datetime.datetime(2015, 9, 10, 11, 12, 13)
+    assert t.stamp == datetime.datetime(2015, 9, 10, 11, 12, 13)
     assert t.text == '20150910111213'
