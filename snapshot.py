@@ -95,7 +95,7 @@ class Organizer:
                         _logger.debug('Adding snapshot {s} to quote {q}.'.format(s=snapshot.name, q=queue.name))
                         queue.snapshots.append(snapshot)
                     else:
-                        _logger.warning('Snapshot {s} cannot be mapped to any of these qeues: {qs}. Skipped.'.format(s=snapshot, qs=', '.join(self.queue_by_name.keys())))
+                        _logger.warning('Snapshot {s} cannot be mapped to any of these queues: {qs}. Skipped.'.format(s=snapshot, qs=', '.join(self.queue_by_name.keys())))
 
         # sort queues:
         for queue in self.queues:
