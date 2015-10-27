@@ -1,6 +1,7 @@
 import datetime
 from unittest import mock
 import pytest
+import shutil
 from exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
 from snapshot import Snapshot, Organizer, Queue
 
@@ -58,11 +59,12 @@ def test_organizer_construction(mock_os):
 
 def prepare_os_with_directory_list(mock_os, *files):
     """Helper to set up os mock with a number of files being returned by listdir."""
-    mock_os.path.exists = mock.MagicMock(return_value=True)
-    mock_os.path.join = mock.MagicMock(side_effect=lambda *args: args[-1])
-    mock_os.path.basename = mock.MagicMock(side_effect=lambda p: p)
     mock_os.listdir = mock.MagicMock(return_value=files)
+    mock_os.link = mock.sentinel.OS_LINK
+    mock_os.path.basename = mock.MagicMock(side_effect=lambda p: p)
+    mock_os.path.exists = mock.MagicMock(return_value=True)
     mock_os.path.isdir = mock.MagicMock(return_value=True)
+    mock_os.path.join = mock.MagicMock(side_effect=lambda *args: args[-1])
 
 
 @mock.patch('snapshot.os')
@@ -132,3 +134,48 @@ def test_organizer_find_snapshots_multiple_queues(mock_os):
     assert queue1.snapshots[0].name == 'queue1-20150201100907'
     assert len(queue2.snapshots) == 1
     assert queue2.snapshots[0].name == 'queue2-20150201100906'
+
+
+@mock.patch('snapshot.shutil')
+@mock.patch('snapshot.os')
+def test_link_source_ok(mock_os, mock_shutil):
+    mock_shutil.copytree = mock.MagicMock(return_value=mock.sentinel.NEW_DESTINATION_PATH)
+    mock_shutil.Error = shutil.Error
+    prepare_os_with_directory_list(mock_os)
+    mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 1).timestamp())
+
+    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1.snapshots = []
+    queue2.snapshots = []
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
+    organizer.create_snapshot()
+
+    mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
+    assert len(queue1.snapshots) == 1
+    assert queue1.snapshots[0].name == 'queue1-20150101000000'
+    assert not queue2.snapshots
+
+
+@mock.patch('snapshot.shutil')
+@mock.patch('snapshot.os')
+def test_link_source_error(mock_os, mock_shutil):
+    mock_shutil.copytree = mock.MagicMock(side_effect=shutil.Error)
+    mock_shutil.Error = shutil.Error
+    mock_shutil.rmtree = mock.MagicMock()
+    prepare_os_with_directory_list(mock_os)
+    mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 1).timestamp())
+
+    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1.snapshots = []
+    queue2.snapshots = []
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
+    organizer.create_snapshot()
+
+    mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
+    mock_shutil.rmtree.assert_called_once_with('queue1-20150101000000', ignore_errors=mock.ANY)
+    assert not queue1.snapshots
+    assert not queue2.snapshots

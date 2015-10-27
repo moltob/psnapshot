@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import re
+import shutil
 from exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
 
 _logger = logging.getLogger(__name__)
@@ -61,8 +62,8 @@ class Organizer:
     """Management of snapshot queues.
 
     :ivar srcdir: Path to source directory of which snapshots are managed.
-    :ivar dstdir: Path to directory where snaphot folders are stored.
-    :ivar queues: Snaphot queues to be managed.
+    :ivar dstdir: Path to directory where snapshot folders are stored.
+    :ivar queues: Snapshot queues to be managed.
     """
 
     def __init__(self, srcdir, dstdir, queues):
@@ -79,7 +80,31 @@ class Organizer:
         if not queues:
             raise QueueSpecError('No snapshot queues defined.')
 
+    @property
+    def srcdir_time(self):
+        """Time of newest file in source directory."""
+
+        # get the latest modification time of the directory tree:
+        newest_time = datetime.datetime.fromtimestamp(os.path.getmtime(self.srcdir))
+        for dirpath, _, filenames in os.walk(self.srcdir):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                time = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
+
+                # round off to seconds:
+                time = datetime.datetime(year=time.year,
+                                         month=time.month,
+                                         day=time.day,
+                                         hour=time.hour,
+                                         minute=time.minute,
+                                         second=time.second)
+
+                time = max(time, newest_time)
+
+        return newest_time
+
     def find_snapshots(self):
+        """Detects valid snapshot folders in destination directory."""
 
         for queue in self.queues:
             queue.snapshots = []
@@ -95,8 +120,30 @@ class Organizer:
                         _logger.debug('Adding snapshot {s} to quote {q}.'.format(s=snapshot.name, q=queue.name))
                         queue.snapshots.append(snapshot)
                     else:
-                        _logger.warning('Snapshot {s} cannot be mapped to any of these queues: {qs}. Skipped.'.format(s=snapshot, qs=', '.join(self.queue_by_name.keys())))
+                        _logger.warning(
+                            'Snapshot {s} cannot be mapped to any of these queues: {qs}. Skipped.'.format(s=snapshot, qs=', '.join(self.queue_by_name.keys())))
 
         # sort queues:
         for queue in self.queues:
             queue.snapshots = sorted(queue.snapshots, key=lambda s: s.time, reverse=True)
+
+    def create_snapshot(self):
+        """Creates a new snapshot of source directory and adds it to beginning of first queue."""
+
+        name = '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=self.queues[0].name, ts=self.srcdir_time)
+        _logger.info('Creating hard-linked snapshot {} of source directory.'.format(name))
+
+        path = os.path.join(self.dstdir, name)
+
+        try:
+            shutil.copytree(self.srcdir, path, copy_function=os.link)
+            self.queues[0].snapshots.insert(0, Snapshot(path))
+            _logger.debug('Hard-linked copy complete.')
+        except shutil.Error as e:
+            _logger.error('Creation of hard-linked tree copy failed: {}'.format(e))
+            _logger.debug('Trying to clean up invalid copy.')
+            shutil.rmtree(path, ignore_errors=True)
+
+    def consolidate(self):
+        """Ensures queue specifications are valid by deleting and moving snapshots between queues."""
+        return NotImplemented
