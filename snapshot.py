@@ -75,7 +75,7 @@ class Organizer:
         if not os.path.exists(srcdir):
             raise SourceDirError('Source directory {} does not exist.'.format(srcdir))
         if not os.path.exists(dstdir):
-            raise DestinationDirError('Destinamtion directory does not exist.'.format(dstdir))
+            raise DestinationDirError('Destination directory does not exist.'.format(dstdir))
         if not queues:
             raise QueueSpecError('No snapshot queues defined.')
 
