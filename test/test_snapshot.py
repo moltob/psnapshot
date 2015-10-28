@@ -179,3 +179,41 @@ def test_link_source_error(mock_os, mock_shutil):
     mock_shutil.rmtree.assert_called_once_with('queue1-20150101000000', ignore_errors=mock.ANY)
     assert not queue1.snapshots
     assert not queue2.snapshots
+
+
+@mock.patch('snapshot.os')
+def test_organizer_srcdir_time_empty_dir(mock_os):
+    prepare_os_with_directory_list(mock_os)
+    mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 2, 3, 4, 5, 6).timestamp())
+    mock_os.walk = mock.MagicMock(return_value=[])
+
+    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
+
+    assert organizer.srcdir_time == datetime.datetime(2015, 1, 2, 3, 4, 5)
+    mock_os.path.getmtime.assert_called_once_with(mock.sentinel.SRCDIR)
+
+
+@mock.patch('snapshot.os')
+def test_organizer_srcdir_time(mock_os):
+    prepare_os_with_directory_list(mock_os)
+    mock_os.walk = mock.MagicMock(return_value=[(mock.sentinel.SRCDIR, [], (mock.sentinel.FILE1, mock.sentinel.FILE2))])
+
+    time = {
+        mock.sentinel.SRCDIR: datetime.datetime(2015, 1, 2),
+        mock.sentinel.FILE1: datetime.datetime(2015, 2, 3),
+        mock.sentinel.FILE2: datetime.datetime(2015, 3, 4, 10, 20, 30, 40),
+    }
+    mock_os.path.getmtime = mock.MagicMock(side_effect=lambda f: time[f].timestamp())
+
+    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
+
+    assert organizer.srcdir_time == datetime.datetime(2015, 3, 4, 10, 20, 30)
+
+# TODO: implement snapshot consolidation and test
+# TODO: implement top-level control and test

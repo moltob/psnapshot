@@ -86,22 +86,23 @@ class Organizer:
 
         # get the latest modification time of the directory tree:
         newest_time = datetime.datetime.fromtimestamp(os.path.getmtime(self.srcdir))
+
         for dirpath, _, filenames in os.walk(self.srcdir):
             for filename in filenames:
                 filepath = os.path.join(dirpath, filename)
                 time = datetime.datetime.fromtimestamp(os.path.getmtime(filepath))
+                newest_time = max(time, newest_time)
 
-                # round off to seconds:
-                time = datetime.datetime(year=time.year,
-                                         month=time.month,
-                                         day=time.day,
-                                         hour=time.hour,
-                                         minute=time.minute,
-                                         second=time.second)
+        return self.rounded_to_seconds(newest_time)
 
-                time = max(time, newest_time)
-
-        return newest_time
+    @classmethod
+    def rounded_to_seconds(cls, time):
+        return datetime.datetime(year=time.year,
+                                 month=time.month,
+                                 day=time.day,
+                                 hour=time.hour,
+                                 minute=time.minute,
+                                 second=time.second)
 
     def find_snapshots(self):
         """Detects valid snapshot folders in destination directory."""
