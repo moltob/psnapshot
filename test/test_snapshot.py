@@ -215,5 +215,22 @@ def test_organizer_srcdir_time(mock_os):
 
     assert organizer.srcdir_time == datetime.datetime(2015, 3, 4, 10, 20, 30)
 
+
+@mock.patch('snapshot.os')
+def test_organizer_snapshots_time(mock_os):
+    prepare_os_with_directory_list(mock_os)
+
+    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
+    assert organizer.snapshots_time is None
+
+    queue2.snapshots = [Snapshot('queue2-20150201100906')]
+    assert organizer.snapshots_time is None
+
+    queue1.snapshots = [Snapshot('queue1-20150101100906')]
+    assert organizer.snapshots_time == datetime.datetime(2015, 1, 1, 10, 9, 6)
+
 # TODO: implement snapshot consolidation and test
 # TODO: implement top-level control and test

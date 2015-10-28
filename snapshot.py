@@ -95,6 +95,13 @@ class Organizer:
 
         return self.rounded_to_seconds(newest_time)
 
+    @property
+    def snapshots_time(self):
+        """Time of newest snapshot in queues."""
+
+        queue = self.queues[0]
+        return queue.snapshots[0].time if queue.snapshots else None
+
     @classmethod
     def rounded_to_seconds(cls, time):
         return datetime.datetime(year=time.year,
