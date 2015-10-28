@@ -146,16 +146,13 @@ def test_link_source_ok(mock_os, mock_shutil):
 
     queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
     queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue1.snapshots = []
-    queue2.snapshots = []
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
-    organizer.create_snapshot()
+    snapshot = organizer.create_snapshot()
 
     mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
-    assert len(queue1.snapshots) == 1
-    assert queue1.snapshots[0].name == 'queue1-20150101000000'
-    assert not queue2.snapshots
+    assert snapshot
+    assert snapshot.name == 'queue1-20150101000000'
 
 
 @mock.patch('snapshot.shutil')
@@ -169,16 +166,13 @@ def test_link_source_error(mock_os, mock_shutil):
 
     queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
     queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue1.snapshots = []
-    queue2.snapshots = []
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
-    organizer.create_snapshot()
+    snapshot = organizer.create_snapshot()
 
     mock_shutil.copytree.assert_called_once_with(mock.sentinel.SRCDIR, mock.ANY, copy_function=mock.sentinel.OS_LINK)
     mock_shutil.rmtree.assert_called_once_with('queue1-20150101000000', ignore_errors=mock.ANY)
-    assert not queue1.snapshots
-    assert not queue2.snapshots
+    assert not snapshot
 
 
 @mock.patch('snapshot.os')

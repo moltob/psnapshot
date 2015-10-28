@@ -136,7 +136,7 @@ class Organizer:
             queue.snapshots = sorted(queue.snapshots, key=lambda s: s.time, reverse=True)
 
     def create_snapshot(self):
-        """Creates a new snapshot of source directory and adds it to beginning of first queue."""
+        """Returns a new snapshot of source directory."""
 
         name = '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=self.queues[0].name, ts=self.srcdir_time)
         _logger.info('Creating hard-linked snapshot {} of source directory.'.format(name))
@@ -145,13 +145,16 @@ class Organizer:
 
         try:
             shutil.copytree(self.srcdir, path, copy_function=os.link)
-            self.queues[0].snapshots.insert(0, Snapshot(path))
             _logger.debug('Hard-linked copy complete.')
+            return Snapshot(path)
         except shutil.Error as e:
             _logger.error('Creation of hard-linked tree copy failed: {}'.format(e))
             _logger.debug('Trying to clean up invalid copy.')
             shutil.rmtree(path, ignore_errors=True)
+            return None
 
     def consolidate(self):
-        """Ensures queue specifications are valid by deleting and moving snapshots between queues."""
-        return NotImplemented
+        """Ensures queue snapshots satisfy queue specifications by deleting and moving snapshots between queues."""
+
+        for queue in self.queues:
+            queue.consolidate()
