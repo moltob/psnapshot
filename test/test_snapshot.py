@@ -70,6 +70,23 @@ def test_snapshot_move(mock_os):
     mock_os.rename.assert_called_once_with('queue1-20151029073630', 'queue2-20151029073630')
 
 
+@mock.patch('snapshot.os')
+@mock.patch('snapshot.shutil')
+def test_snapshot_delete(mock_shutil, mock_os):
+    prepare_os_with_directory_list(mock_os)
+    mock_os.rename = mock.MagicMock()
+    mock_shutil.rmtree = mock.MagicMock()
+
+    s = Snapshot('queue1-20151029073630')
+    s.delete()
+
+    mock_shutil.rmtree.assert_called_once_with('queue1-20151029073630')
+    assert not s.dirpath
+    assert not s.name
+    assert not s.time
+    assert not s.queue_name
+
+
 def prepare_os_with_directory_list(mock_os, *files):
     """Helper to set up os mock with a number of files being returned by listdir."""
     mock_os.listdir = mock.MagicMock(return_value=files)
