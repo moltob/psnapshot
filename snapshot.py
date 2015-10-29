@@ -13,6 +13,7 @@ class Snapshot:
     """Single snapshot of source folder."""
 
     SNAPSHOT_NAME_PATTERN = re.compile(r'^(?P<queue>\w+)-(?P<timestamptext>\d{14})$')
+    SNAPSHOT_NAME_FORMAT = '{queue}-{time:%Y%m%d%H%M%S}'
 
     def __init__(self, dirpath):
         self.dirpath = dirpath
@@ -28,7 +29,7 @@ class Snapshot:
 
     @classmethod
     def build_name(cls, queue_name, time):
-        return '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=queue_name, ts=time)
+        return cls.SNAPSHOT_NAME_FORMAT.format(queue=queue_name, time=time)
 
     @classmethod
     def parse_name(cls, name):
