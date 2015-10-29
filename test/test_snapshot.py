@@ -106,9 +106,9 @@ def test_queue_push_snapshot_too_recent():
     mock_snapshot2.time = datetime.datetime(2015, 10, 29, 21, 35)  # not yet one day apart
 
     q = Queue(mock.sentinel.NAME, 1, 1)
-    popped = q.snapshots = [mock_snapshot1]
+    q.snapshots = [mock_snapshot1]
 
-    q.push_snapshot(mock_snapshot2)
+    popped = q.push_snapshot(mock_snapshot2)
 
     assert q.snapshots == [mock_snapshot1]
     assert not mock_snapshot1.delete.called
@@ -142,7 +142,7 @@ def test_queue_push_snapshot_length_exceeded():
     mock_snapshot3.time = datetime.datetime(2015, 10, 26, 21, 35)
 
     q = Queue(mock.sentinel.NAME, delta=2, length=2)
-    q.snapshots = [, mock_snapshot2, mock_snapshot1]
+    q.snapshots = [mock_snapshot2, mock_snapshot1]
 
     popped = q.push_snapshot(mock_snapshot3)
 
@@ -150,7 +150,27 @@ def test_queue_push_snapshot_length_exceeded():
     assert not mock_snapshot1.delete.called
     assert not mock_snapshot2.delete.called
     assert not mock_snapshot3.delete.called
-    assert popped=[mock_snapshot1]
+    assert popped == [mock_snapshot1]
+
+
+def test_queue_push_snapshots():
+    mock_snapshot1 = mock.MagicMock()
+    mock_snapshot1.time = datetime.datetime(2015, 10, 20, 20, 35)
+    mock_snapshot2 = mock.MagicMock()
+    mock_snapshot2.time = datetime.datetime(2015, 10, 23, 21, 35)
+    mock_snapshot3 = mock.MagicMock()
+    mock_snapshot3.time = datetime.datetime(2015, 10, 26, 21, 35)
+
+    q = Queue(mock.sentinel.NAME, delta=2, length=1)
+    q.snapshots = [mock_snapshot1]
+
+    popped = q.push_snapshots([mock_snapshot3, mock_snapshot2])
+
+    assert q.snapshots == [mock_snapshot3]
+    assert not mock_snapshot1.delete.called
+    assert not mock_snapshot2.delete.called
+    assert not mock_snapshot3.delete.called
+    assert popped == [mock_snapshot2, mock_snapshot1]
 
 
 def prepare_os_with_directory_list(mock_os, *files):

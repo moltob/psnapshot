@@ -97,7 +97,7 @@ class Queue:
 
         popped = []
         for snapshot in reversed(snapshots):
-            popped += self.push_snapshot(snapshot)
+            popped[:0] = self.push_snapshot(snapshot)
         return popped
 
     def push_snapshot(self, snapshot):
