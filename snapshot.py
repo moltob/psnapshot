@@ -8,11 +8,11 @@ from exceptions import SnapshotDirError, SourceDirError, DestinationDirError, Qu
 
 _logger = logging.getLogger(__name__)
 
-SNAPSHOT_NAME_PATTERN = re.compile(r'^(?P<queue>\w+)-(?P<timestamptext>\d{14})$')
-
 
 class Snapshot:
     """Single snapshot of source folder."""
+
+    SNAPSHOT_NAME_PATTERN = re.compile(r'^(?P<queue>\w+)-(?P<timestamptext>\d{14})$')
 
     def __init__(self, dirpath):
         self.dirpath = dirpath
@@ -32,7 +32,7 @@ class Snapshot:
 
     @classmethod
     def parse_name(cls, name):
-        m = SNAPSHOT_NAME_PATTERN.match(name)
+        m = cls.SNAPSHOT_NAME_PATTERN.match(name)
         if not m:
             raise SnapshotDirError('Snapshot directory name {} does not match naming pattern.'.format(name))
 
