@@ -21,11 +21,22 @@ class Snapshot:
         if not os.path.exists(dirpath):
             raise SnapshotDirError('Snapshot directory {} does not exist.'.format(dirpath))
 
-        m = SNAPSHOT_NAME_PATTERN.match(self.name)
-        if not m:
-            raise SnapshotDirError('Snapshot directory name {} does not match naming pattern.'.format(self.name))
+        self.queue_name, self.time = self.parse_name(self.name)
 
-        self.queue_name = m.group('queue')
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def build_name(cls, queue_name, time):
+        return '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=queue_name, ts=time)
+
+    @classmethod
+    def parse_name(cls, name):
+        m = SNAPSHOT_NAME_PATTERN.match(name)
+        if not m:
+            raise SnapshotDirError('Snapshot directory name {} does not match naming pattern.'.format(name))
+
+        queue_name = m.group('queue')
 
         timestamp_text = m.group('timestamptext')
         year = int(timestamp_text[0:4])
@@ -35,10 +46,18 @@ class Snapshot:
         minute = int(timestamp_text[10:12])
         second = int(timestamp_text[12:14])
 
-        self.time = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
+        time = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
 
-    def __str__(self):
-        return self.name
+        return queue_name, time
+
+    def move(self, queue_name):
+        """Moves this snapshot to given queue by renaming the directory if needed."""
+        if self.queue_name != queue_name:
+            pass
+
+    def delete(self):
+        """Deletes snapshot from disk."""
+        pass
 
 
 class Queue:
@@ -56,6 +75,34 @@ class Queue:
         self.length = length
 
         self.snapshots = None
+        self.timedelta = datetime.timedelta(days=self.delta)
+
+    def push_snapshots(self, snapshots):
+        """Pushes new snapshots to beginning of this queue and returns the snapshots falling off the other end."""
+
+        popped = []
+        for snapshot in reversed(snapshots):
+            popped += self.push_snapshot(snapshot)
+        return popped
+
+    def push_snapshot(self, snapshot):
+        """Pushes a new snapshot to beginning of queue and returns the snapshots falling off the other end."""
+
+        # snapshots are only accepted if the newest one is old enough with respect to specified delta time:
+        if not self.snapshots or (snapshot.time - self.snapshots[0].time < self.timedelta):
+            _logger.info('Accepting snapshot {s} in queue {q}.'.format(s=snapshot.name, q=self.name))
+            self.snapshots.insert(0, snapshot)
+            snapshot.move(self.name)
+        else:
+            _logger.info('Snapshot {s} not accepted in queue {q}.'.format(s=snapshot.name, q=self.name))
+
+        # cleanup old snapshots:
+        popped = self.snapshots[self.length:]
+        if popped:
+            _logger.info('Popping {n} snapshots from end of queue {q}'.format(n=len(popped), q=self.name))
+            self.snapshots = self.snapshots[:self.length]
+
+        return popped
 
 
 class Organizer:
@@ -120,16 +167,17 @@ class Organizer:
         for entry in os.listdir(self.dstdir):
             fullpath = os.path.join(self.dstdir, entry)
             if os.path.isdir(fullpath):
-                m = SNAPSHOT_NAME_PATTERN.match(entry)
-                if m:
+                try:
                     snapshot = Snapshot(fullpath)
                     queue = self.queue_by_name.get(snapshot.queue_name)
                     if queue:
                         _logger.debug('Adding snapshot {s} to quote {q}.'.format(s=snapshot.name, q=queue.name))
                         queue.snapshots.append(snapshot)
                     else:
-                        _logger.warning(
-                            'Snapshot {s} cannot be mapped to any of these queues: {qs}. Skipped.'.format(s=snapshot, qs=', '.join(self.queue_by_name.keys())))
+                        queue_names = ', '.join(self.queue_by_name.keys())
+                        _logger.warning('Snapshot {s} cannot be mapped to any of these queues: {qs}. Skipped.'.format(s=snapshot, qs=queue_names))
+                except SnapshotDirError:
+                    _logger.debug('Destination folder contains directory {} that does not match naming convention. Skipped.'.format(entry))
 
         # sort queues:
         for queue in self.queues:
@@ -138,7 +186,7 @@ class Organizer:
     def create_snapshot(self):
         """Returns a new snapshot of source directory."""
 
-        name = '{queue}-{ts:%Y%m%d%H%M%S}'.format(queue=self.queues[0].name, ts=self.srcdir_time)
+        name = Snapshot.build_name(self.queues[0].name, self.srcdir_time)
         _logger.info('Creating hard-linked snapshot {} of source directory.'.format(name))
 
         path = os.path.join(self.dstdir, name)
@@ -153,8 +201,13 @@ class Organizer:
             shutil.rmtree(path, ignore_errors=True)
             return None
 
-    def consolidate(self):
-        """Ensures queue snapshots satisfy queue specifications by deleting and moving snapshots between queues."""
+    def push(self, snapshot):
+        """Pushes a new snapshot into first queue and propagates possible queue updates. Returns flag, whether new snapshot was added."""
 
+        propagated_snapshots = [snapshot]
         for queue in self.queues:
-            queue.consolidate()
+            propagated_snapshots = queue.push_snapshots(propagated_snapshots)
+
+        # snapshots popping from last queue are no longer required:
+        for snapshot in propagated_snapshots:
+            snapshot.delete()

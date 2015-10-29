@@ -71,7 +71,7 @@ def prepare_os_with_directory_list(mock_os, *files):
 def test_organizer_find_snapshots_none(mock_os):
     prepare_os_with_directory_list(mock_os)
 
-    queue = Queue(mock.sentinel.QUEUE_NAME, mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue = Queue(mock.sentinel.QUEUE_NAME, 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue,))
     organizer.find_snapshots()
@@ -83,7 +83,7 @@ def test_organizer_find_snapshots_none(mock_os):
 def test_organizer_find_snapshots_wrong_name(mock_os):
     prepare_os_with_directory_list(mock_os, 'not-matching-name')
 
-    queue = Queue(mock.sentinel.QUEUE_NAME, mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue = Queue(mock.sentinel.QUEUE_NAME, 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue,))
     organizer.find_snapshots()
@@ -96,7 +96,7 @@ def test_organizer_find_snapshots_wrong_name(mock_os):
 def test_organizer_find_snapshots_unknown_queue(mock_os):
     prepare_os_with_directory_list(mock_os, 'queueX-20150201100907')
 
-    queue = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue,))
     organizer.find_snapshots()
@@ -108,7 +108,7 @@ def test_organizer_find_snapshots_unknown_queue(mock_os):
 def test_organizer_find_snapshots_ordered(mock_os):
     prepare_os_with_directory_list(mock_os, 'queue1-20150201100907', 'not-matching-name', 'queue1-20150201100908', 'queue1-20150201100906')
 
-    queue = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue,))
     organizer.find_snapshots()
@@ -124,8 +124,8 @@ def test_organizer_find_snapshots_ordered(mock_os):
 def test_organizer_find_snapshots_multiple_queues(mock_os):
     prepare_os_with_directory_list(mock_os, 'queue1-20150201100907', 'queue2-20150201100906', 'queueX-20150201100908')
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
     organizer.find_snapshots()
@@ -144,8 +144,8 @@ def test_link_source_ok(mock_os, mock_shutil):
     prepare_os_with_directory_list(mock_os)
     mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 1).timestamp())
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
     snapshot = organizer.create_snapshot()
@@ -164,8 +164,8 @@ def test_link_source_error(mock_os, mock_shutil):
     prepare_os_with_directory_list(mock_os)
     mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 1).timestamp())
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
     snapshot = organizer.create_snapshot()
@@ -181,8 +181,8 @@ def test_organizer_srcdir_time_empty_dir(mock_os):
     mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 2, 3, 4, 5, 6).timestamp())
     mock_os.walk = mock.MagicMock(return_value=[])
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
 
@@ -202,8 +202,8 @@ def test_organizer_srcdir_time(mock_os):
     }
     mock_os.path.getmtime = mock.MagicMock(side_effect=lambda f: time[f].timestamp())
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
 
@@ -214,8 +214,8 @@ def test_organizer_srcdir_time(mock_os):
 def test_organizer_snapshots_time(mock_os):
     prepare_os_with_directory_list(mock_os)
 
-    queue1 = Queue('queue1', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
-    queue2 = Queue('queue2', mock.sentinel.QUEUE_DELTA, mock.sentinel.QUEUE_LENGTH)
+    queue1 = Queue('queue1', 1, mock.sentinel.QUEUE_LENGTH)
+    queue2 = Queue('queue2', 1, mock.sentinel.QUEUE_LENGTH)
 
     organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (queue1, queue2))
     assert organizer.snapshots_time is None
