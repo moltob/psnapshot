@@ -54,11 +54,25 @@ class Snapshot:
     def move(self, queue_name):
         """Moves this snapshot to given queue by renaming the directory if needed."""
         if self.queue_name != queue_name:
-            pass
+            name = self.build_name(queue_name, self.time)
+            dstdir = os.path.dirname(self.dirpath)
+            dirpath = os.path.join(dstdir, name)
+
+            _logger.debug('Renaming snapshot {old} to {new}.'.format(old=self.name, new=name))
+            os.rename(self.dirpath, dirpath)
+
+            self.dirpath = dirpath
+            self.name = name
+            self.queue_name = queue_name
 
     def delete(self):
         """Deletes snapshot from disk."""
-        pass
+        _logger.debug('Deleting snaphot {} from disk.'.format(self.name))
+        shutil.rmtree(self.dirpath)
+        self.dirpath = None
+        self.name = None
+        self.queue_name = None
+        self.time = None
 
 
 class Queue:
