@@ -87,6 +87,72 @@ def test_snapshot_delete(mock_shutil, mock_os):
     assert not s.queue_name
 
 
+def test_queue_push_snapshot_first():
+    mock_snapshot = mock.MagicMock()
+
+    q = Queue(mock.sentinel.NAME, 1, 1)
+    popped = q.push_snapshot(mock_snapshot)
+
+    assert q.snapshots == [mock_snapshot]
+    mock_snapshot.move.assert_called_once_with(mock.sentinel.NAME)
+    assert not mock_snapshot.delete.called
+    assert not popped
+
+
+def test_queue_push_snapshot_too_recent():
+    mock_snapshot1 = mock.MagicMock()
+    mock_snapshot1.time = datetime.datetime(2015, 10, 29, 20, 35)
+    mock_snapshot2 = mock.MagicMock()
+    mock_snapshot2.time = datetime.datetime(2015, 10, 29, 21, 35)  # not yet one day apart
+
+    q = Queue(mock.sentinel.NAME, 1, 1)
+    popped = q.snapshots = [mock_snapshot1]
+
+    q.push_snapshot(mock_snapshot2)
+
+    assert q.snapshots == [mock_snapshot1]
+    assert not mock_snapshot1.delete.called
+    assert mock_snapshot2.delete.called
+    assert not popped
+
+
+def test_queue_push_snapshot_accepted():
+    mock_snapshot1 = mock.MagicMock()
+    mock_snapshot1.time = datetime.datetime(2015, 10, 25, 20, 35)
+    mock_snapshot2 = mock.MagicMock()
+    mock_snapshot2.time = datetime.datetime(2015, 10, 29, 21, 35)
+
+    q = Queue(mock.sentinel.NAME, delta=2, length=5)
+    q.snapshots = [mock_snapshot1]
+
+    popped = q.push_snapshot(mock_snapshot2)
+
+    assert q.snapshots == [mock_snapshot2, mock_snapshot1]
+    assert not mock_snapshot1.delete.called
+    assert not mock_snapshot2.delete.called
+    assert not popped
+
+
+def test_queue_push_snapshot_length_exceeded():
+    mock_snapshot1 = mock.MagicMock()
+    mock_snapshot1.time = datetime.datetime(2015, 10, 20, 20, 35)
+    mock_snapshot2 = mock.MagicMock()
+    mock_snapshot2.time = datetime.datetime(2015, 10, 23, 21, 35)
+    mock_snapshot3 = mock.MagicMock()
+    mock_snapshot3.time = datetime.datetime(2015, 10, 26, 21, 35)
+
+    q = Queue(mock.sentinel.NAME, delta=2, length=2)
+    q.snapshots = [, mock_snapshot2, mock_snapshot1]
+
+    popped = q.push_snapshot(mock_snapshot3)
+
+    assert q.snapshots == [mock_snapshot3, mock_snapshot2]
+    assert not mock_snapshot1.delete.called
+    assert not mock_snapshot2.delete.called
+    assert not mock_snapshot3.delete.called
+    assert popped=[mock_snapshot1]
+
+
 def prepare_os_with_directory_list(mock_os, *files):
     """Helper to set up os mock with a number of files being returned by listdir."""
     mock_os.listdir = mock.MagicMock(return_value=files)
