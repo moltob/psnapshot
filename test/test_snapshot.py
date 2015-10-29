@@ -57,6 +57,19 @@ def test_organizer_construction(mock_os):
         Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [])
 
 
+@mock.patch('snapshot.os')
+def test_snapshot_move(mock_os):
+    prepare_os_with_directory_list(mock_os)
+    mock_os.rename = mock.MagicMock()
+    s = Snapshot('queue1-20151029073630')
+
+    s.move('queue1')
+    assert not mock_os.rename.called
+
+    s.move('queue2')
+    mock_os.rename.assert_called_once_with('queue1-20151029073630', 'queue2-20151029073630')
+
+
 def prepare_os_with_directory_list(mock_os, *files):
     """Helper to set up os mock with a number of files being returned by listdir."""
     mock_os.listdir = mock.MagicMock(return_value=files)
