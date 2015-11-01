@@ -220,7 +220,7 @@ class Organizer:
     def push(self, snapshot):
         """Pushes a new snapshot into first queue and propagates possible queue updates. Returns flag, whether new snapshot was added."""
 
-        propagated_snapshots = [snapshot]
+        propagated_snapshots = (snapshot,)
         for queue in self.queues:
             propagated_snapshots = queue.push_snapshots(propagated_snapshots)
 

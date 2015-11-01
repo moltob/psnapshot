@@ -342,5 +342,27 @@ def test_organizer_snapshots_time(mock_os):
     queue1.snapshots = [Snapshot('queue1-20150101100906')]
     assert organizer.snapshots_time == datetime.datetime(2015, 1, 1, 10, 9, 6)
 
-# TODO: implement snapshot consolidation and test
+
+@mock.patch('snapshot.os')
+def test_organizer_push_snapshot(mock_os):
+    prepare_os_with_directory_list(mock_os)
+
+    mock_queue1 = mock.MagicMock()
+    mock_queue2 = mock.MagicMock()
+
+    organizer = Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock_queue1, mock_queue2))
+
+    mock_snapshot_2a = mock.MagicMock()
+    mock_snapshot_2b = mock.MagicMock()
+
+    mock_queue1.push_snapshots = mock.MagicMock(return_value=(mock.sentinel.SNAPSHOT_1A, mock.sentinel.SNAPSHOT_1B))
+    mock_queue2.push_snapshots = mock.MagicMock(return_value=(mock_snapshot_2a, mock_snapshot_2b))
+
+    organizer.push(mock.sentinel.SNAPSHOT)
+
+    mock_queue1.push_snapshots.assert_called_once_with((mock.sentinel.SNAPSHOT,))
+    mock_queue2.push_snapshots.assert_called_once_with((mock.sentinel.SNAPSHOT_1A, mock.sentinel.SNAPSHOT_1B))
+    assert mock_snapshot_2a.delete.called
+    assert mock_snapshot_2b.delete.called
+
 # TODO: implement top-level control and test
