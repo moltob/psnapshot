@@ -9,5 +9,6 @@ class SnapshotController:
         self.organizer = Organizer(srcdir, dstdir, queues)
 
     def create_snapshot(self):
+        self.organizer.find_snapshots()
         snapshot = self.organizer.create_snapshot()
         self.organizer.push(snapshot)

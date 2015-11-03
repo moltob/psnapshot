@@ -104,7 +104,7 @@ class Queue:
         """Pushes a new snapshot to beginning of queue and returns the snapshots falling off the other end."""
 
         # snapshots are only accepted if the newest one is old enough with respect to specified delta time:
-        if not self.snapshots or (snapshot.time - self.snapshots[0].time > self.timedelta):
+        if not self.snapshots or (snapshot.time - self.snapshots[0].time >= self.timedelta):
             _logger.info('Accepting snapshot {s} in queue {q}.'.format(s=snapshot.name, q=self.name))
             self.snapshots.insert(0, snapshot)
             snapshot.move(self.name)
