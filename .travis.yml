@@ -4,9 +4,6 @@ python:
   - "3.4"
   - "3.5"
 install:
-  - pip install --upgrade pip
-  - pip install virtualenv
   - pip install pytest
-  - pip list
 script:
   - python -m pytest test
