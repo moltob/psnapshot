@@ -1,12 +1,13 @@
 import datetime
-from unittest import mock
-import pytest
 import shutil
-from exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
-from snapshot import Snapshot, Organizer, Queue
+from unittest import mock
+
+import pytest
+from psnapshot.exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
+from psnapshot.snapshot import Snapshot, Organizer, Queue
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_snapshot_non_existent_directory(mock_os):
     mock_os.path.exists = mock.MagicMock(return_value=False)
 
@@ -14,7 +15,7 @@ def test_snapshot_non_existent_directory(mock_os):
         Snapshot('non/existing/dir')
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_snapshot_wrong_name_pattern(mock_os):
     mock_os.path.exists = mock.MagicMock(return_value=True)
     mock_os.path.basename = mock.MagicMock(return_value='dir')
@@ -23,7 +24,7 @@ def test_snapshot_wrong_name_pattern(mock_os):
         Snapshot('non/existing/dir')
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_snapshot_name_pattern_parse(mock_os):
     mock_os.path.exists = mock.MagicMock(return_value=True)
     mock_os.path.basename = mock.MagicMock(return_value='queue-20150102030405')
@@ -34,7 +35,7 @@ def test_snapshot_name_pattern_parse(mock_os):
     assert s.time == datetime.datetime(2015, 1, 2, 3, 4, 5)
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_construction(mock_os):
     exist_by_file = {}
     mock_os.path.exists = mock.MagicMock(side_effect=lambda f: exist_by_file[f])
@@ -57,7 +58,7 @@ def test_organizer_construction(mock_os):
         Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [])
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_snapshot_move(mock_os):
     prepare_os_with_directory_list(mock_os)
     mock_os.rename = mock.MagicMock()
@@ -70,8 +71,8 @@ def test_snapshot_move(mock_os):
     mock_os.rename.assert_called_once_with('queue1-20151029073630', 'queue2-20151029073630')
 
 
-@mock.patch('snapshot.os')
-@mock.patch('snapshot.shutil')
+@mock.patch('psnapshot.snapshot.os')
+@mock.patch('psnapshot.snapshot.shutil')
 def test_snapshot_delete(mock_shutil, mock_os):
     prepare_os_with_directory_list(mock_os)
     mock_os.rename = mock.MagicMock()
@@ -201,7 +202,7 @@ def prepare_os_with_directory_list(mock_os, *files):
     mock_os.path.join = mock.MagicMock(side_effect=lambda *args: args[-1])
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_find_snapshots_none(mock_os):
     prepare_os_with_directory_list(mock_os)
 
@@ -213,7 +214,7 @@ def test_organizer_find_snapshots_none(mock_os):
     assert len(queue.snapshots) == 0
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_find_snapshots_wrong_name(mock_os):
     prepare_os_with_directory_list(mock_os, 'not-matching-name')
 
@@ -226,7 +227,7 @@ def test_organizer_find_snapshots_wrong_name(mock_os):
     mock_os.path.isdir.assert_called_once_with('not-matching-name')
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_find_snapshots_unknown_queue(mock_os):
     prepare_os_with_directory_list(mock_os, 'queueX-20150201100907')
 
@@ -238,7 +239,7 @@ def test_organizer_find_snapshots_unknown_queue(mock_os):
     assert len(queue.snapshots) == 0
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_find_snapshots_ordered(mock_os):
     prepare_os_with_directory_list(mock_os, 'queue1-20150201100907', 'not-matching-name', 'queue1-20150201100908', 'queue1-20150201100906')
 
@@ -254,7 +255,7 @@ def test_organizer_find_snapshots_ordered(mock_os):
     assert queue.snapshots[2].name == 'queue1-20150201100906'
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_find_snapshots_multiple_queues(mock_os):
     prepare_os_with_directory_list(mock_os, 'queue1-20150201100907', 'queue2-20150201100906', 'queueX-20150201100908')
 
@@ -270,8 +271,8 @@ def test_organizer_find_snapshots_multiple_queues(mock_os):
     assert queue2.snapshots[0].name == 'queue2-20150201100906'
 
 
-@mock.patch('snapshot.shutil')
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.shutil')
+@mock.patch('psnapshot.snapshot.os')
 def test_link_source_ok(mock_os, mock_shutil):
     mock_shutil.copytree = mock.MagicMock(return_value=mock.sentinel.NEW_DESTINATION_PATH)
     mock_shutil.Error = shutil.Error
@@ -289,8 +290,8 @@ def test_link_source_ok(mock_os, mock_shutil):
     assert snapshot.name == 'queue1-20150101000000'
 
 
-@mock.patch('snapshot.shutil')
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.shutil')
+@mock.patch('psnapshot.snapshot.os')
 def test_link_source_error(mock_os, mock_shutil):
     mock_shutil.copytree = mock.MagicMock(side_effect=shutil.Error)
     mock_shutil.Error = shutil.Error
@@ -309,7 +310,7 @@ def test_link_source_error(mock_os, mock_shutil):
     assert not snapshot
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_srcdir_time_empty_dir(mock_os):
     prepare_os_with_directory_list(mock_os)
     mock_os.path.getmtime = mock.MagicMock(return_value=datetime.datetime(2015, 1, 2, 3, 4, 5, 6).timestamp())
@@ -324,7 +325,7 @@ def test_organizer_srcdir_time_empty_dir(mock_os):
     mock_os.path.getmtime.assert_called_once_with(mock.sentinel.SRCDIR)
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_srcdir_time(mock_os):
     prepare_os_with_directory_list(mock_os)
     mock_os.walk = mock.MagicMock(return_value=[(mock.sentinel.SRCDIR, [], (mock.sentinel.FILE1, mock.sentinel.FILE2))])
@@ -344,7 +345,7 @@ def test_organizer_srcdir_time(mock_os):
     assert organizer.srcdir_time == datetime.datetime(2015, 3, 4, 10, 20, 30)
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_snapshots_time(mock_os):
     prepare_os_with_directory_list(mock_os)
 
@@ -361,7 +362,7 @@ def test_organizer_snapshots_time(mock_os):
     assert organizer.snapshots_time == datetime.datetime(2015, 1, 1, 10, 9, 6)
 
 
-@mock.patch('snapshot.os')
+@mock.patch('psnapshot.snapshot.os')
 def test_organizer_push_snapshot(mock_os):
     prepare_os_with_directory_list(mock_os)
 

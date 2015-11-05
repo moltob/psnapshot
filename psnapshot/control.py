@@ -2,7 +2,7 @@
 import argparse
 import logging
 
-from snapshot import Organizer, Queue
+from psnapshot.snapshot import Organizer, Queue
 
 
 class SnapshotController:

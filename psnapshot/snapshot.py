@@ -4,7 +4,8 @@ import logging
 import os
 import re
 import shutil
-from exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
+
+from psnapshot.exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
 
 _logger = logging.getLogger(__name__)
 

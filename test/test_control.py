@@ -3,8 +3,8 @@ import datetime
 import os
 import shutil
 
-from control import SnapshotController
-from snapshot import Queue
+from psnapshot.control import SnapshotController
+from psnapshot.snapshot import Queue
 
 SRCDIR = os.path.join(os.path.dirname(__file__), 'resources', 'testsrcdir')
 DSTDIR = os.path.join(os.path.dirname(__file__), 'resources', 'testdstdir')
