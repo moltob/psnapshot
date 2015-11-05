@@ -87,6 +87,24 @@ def test_snapshot_delete(mock_shutil, mock_os):
     assert not s.queue_name
 
 
+def test_queue_from_textual_spec():
+    q = Queue.from_textual_spec('daily[7]+1')
+    assert q.name == 'daily'
+    assert q.length == 7
+    assert q.delta == 1
+
+    q = Queue.from_textual_spec('weekly[4]+7')
+    assert q.name == 'weekly'
+    assert q.length == 4
+    assert q.delta == 7
+
+    with pytest.raises(AttributeError):
+        Queue.from_textual_spec('some[z]-3')
+
+    with pytest.raises(AttributeError):
+        Queue.from_textual_spec(None)
+
+
 def test_queue_push_snapshot_first():
     mock_snapshot = mock.MagicMock()
 

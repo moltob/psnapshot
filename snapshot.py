@@ -84,13 +84,25 @@ class Queue:
     :ivar snapshots: List of snapshots currently in queue.
     """
 
+    QUEUE_TEXT_PATTERN = re.compile(r'^(?P<name>\w+)\[(?P<length>\d+)\]\+(?P<delta>\d+)$')
+
     def __init__(self, name, delta, length):
         self.name = name
-        self.delta = delta
-        self.length = length
+        self.delta = delta if not isinstance(delta, str) else int(delta)
+        self.length = length if not isinstance(length, str) else int(length)
 
         self.snapshots = []
         self.timedelta = datetime.timedelta(days=self.delta)
+
+    @classmethod
+    def from_textual_spec(cls, textspec):
+        """Creates a queue from a textual specification like daily[7]+1."""
+        if textspec:
+            m = cls.QUEUE_TEXT_PATTERN.match(textspec)
+            if m:
+                return cls(**m.groupdict())
+
+        raise AttributeError('textspec cannot be parsed.')
 
     def push_snapshots(self, snapshots):
         """Pushes new snapshots to beginning of this queue and returns the snapshots falling off the other end."""
