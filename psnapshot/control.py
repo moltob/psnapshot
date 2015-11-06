@@ -16,7 +16,6 @@ class SnapshotController:
         snapshot = self.organizer.create_snapshot()
         self.organizer.push(snapshot)
 
-
 def main():
     parser = argparse.ArgumentParser(description='Python version of rsnapshot, managing queues of hard-linked copies or an rsync destination folder.')
     parser.add_argument('srcdir', help='Source directory to create hard-linked copies from.')
@@ -29,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(level=args.log_level)
-    controller = SnapshotController(args.srcdir, args.dstdir, [Queue(spec) for spec in args.queue])
+    controller = SnapshotController(args.srcdir, args.dstdir, [Queue.from_textual_spec(spec) for spec in args.queue])
     controller.create_snapshot()
 
 
