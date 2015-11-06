@@ -200,7 +200,7 @@ class Organizer:
                     snapshot = Snapshot(fullpath)
                     queue = self.queue_by_name.get(snapshot.queue_name)
                     if queue:
-                        _logger.debug('Adding snapshot {s} to quote {q}.'.format(s=snapshot.name, q=queue.name))
+                        _logger.debug('Found snapshot {s}, part of queue {q}.'.format(s=snapshot.name, q=queue.name))
                         queue.snapshots.append(snapshot)
                     else:
                         queue_names = ', '.join(self.queue_by_name.keys())
