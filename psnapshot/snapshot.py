@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import shutil
-
 from psnapshot.exceptions import SnapshotDirError, SourceDirError, DestinationDirError, QueueSpecError
 
 _logger = logging.getLogger(__name__)
@@ -156,6 +155,9 @@ class Organizer:
         if not queues:
             raise QueueSpecError('No snapshot queues defined.')
 
+        for queue in self.queues:
+            _logger.debug('Queue {name}: delta = {delta} length = {length}'.format(name=queue.name, delta=queue.delta, length=queue.length))
+
     @property
     def srcdir_time(self):
         """Time of newest file in source directory."""
@@ -214,8 +216,17 @@ class Organizer:
 
     def create_snapshot(self):
         """Returns a new snapshot of source directory."""
+        srcdir_time = self.srcdir_time
+        _logger.debug('Source folder timestamp:      {0:%Y%m%d%H%M%S}.'.format(srcdir_time))
+        if self.snapshots_time:
+            _logger.debug('Destination folder timestamp: {0:%Y%m%d%H%M%S}.'.format(self.snapshots_time))
 
-        name = Snapshot.build_name(self.queues[0].name, self.srcdir_time)
+        delta = self.queues[0].delta
+        if self.snapshots_time and (srcdir_time < self.snapshots_time + datetime.timedelta(days=delta)):
+            _logger.info('Skipping snapshot creation since the latest one is not {} days older than source.'.format(delta))
+            return
+
+        name = Snapshot.build_name(self.queues[0].name, srcdir_time)
         _logger.info('Creating hard-linked snapshot {} of source directory.'.format(name))
 
         path = os.path.join(self.dstdir, name)

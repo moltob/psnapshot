@@ -18,7 +18,8 @@ class SnapshotController:
     def create_snapshot(self):
         self.organizer.find_snapshots()
         snapshot = self.organizer.create_snapshot()
-        self.organizer.push(snapshot)
+        if snapshot:
+            self.organizer.push(snapshot)
 
 
 def main():
@@ -34,7 +35,8 @@ def main():
         parser.add_argument('-l', '--log-level', help='Logging output level.', choices=['ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
         args = parser.parse_args()
 
-        logging.basicConfig(level=args.log_level, format='%(asctime)s %(levelname)-7s %(message)s')
+        logging.basicConfig(level=args.log_level, format='%(asctime)s %(levelname)-7s %(name)s %(message)s')
+        _logger.info('Storing {} in {}.'.format(args.srcdir, args.dstdir))
         controller = SnapshotController(args.srcdir, args.dstdir, [Queue.from_textual_spec(spec) for spec in args.queue])
         controller.create_snapshot()
     except Exception as ex:

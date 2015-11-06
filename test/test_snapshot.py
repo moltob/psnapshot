@@ -43,16 +43,16 @@ def test_organizer_construction(mock_os):
     exist_by_file[mock.sentinel.SRCDIR] = False
     exist_by_file[mock.sentinel.DSTDIR] = True
     with pytest.raises(SourceDirError):
-        Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.sentinel.QUEUE,))
+        Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.MagicMock(),))
 
     exist_by_file[mock.sentinel.SRCDIR] = True
     exist_by_file[mock.sentinel.DSTDIR] = False
     with pytest.raises(DestinationDirError):
-        Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.sentinel.QUEUE,))
+        Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.MagicMock(),))
 
     exist_by_file[mock.sentinel.SRCDIR] = True
     exist_by_file[mock.sentinel.DSTDIR] = True
-    Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.sentinel.QUEUE,))
+    Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, (mock.MagicMock(),))
 
     with pytest.raises(QueueSpecError):
         Organizer(mock.sentinel.SRCDIR, mock.sentinel.DSTDIR, [])
