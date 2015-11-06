@@ -36,9 +36,11 @@ def main():
         args = parser.parse_args()
 
         logging.basicConfig(level=args.log_level, format='%(asctime)s %(levelname)-7s %(name)s %(message)s')
+
         _logger.info('Storing {} in {}.'.format(args.srcdir, args.dstdir))
         controller = SnapshotController(args.srcdir, args.dstdir, [Queue.from_textual_spec(spec) for spec in args.queue])
         controller.create_snapshot()
+        _logger.info('Done.')
     except Exception as ex:
         _logger.error('Failed: {}'.format(ex))
         sys.exit(-1)
