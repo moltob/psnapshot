@@ -152,6 +152,23 @@ def test_queue_push_snapshot_accepted():
     assert not popped
 
 
+def test_queue_push_snapshot_accepted_rounded():
+    mock_snapshot1 = mock.MagicMock()
+    mock_snapshot1.time = datetime.datetime(2015, 10, 25, 20, 35)
+    mock_snapshot2 = mock.MagicMock()
+    mock_snapshot2.time = datetime.datetime(2015, 10, 27, 20, 30)
+
+    q = Queue(mock.sentinel.NAME, delta=2, length=5)
+    q.snapshots = [mock_snapshot1]
+
+    popped = q.push_snapshot(mock_snapshot2)
+
+    assert q.snapshots == [mock_snapshot2, mock_snapshot1]
+    assert not mock_snapshot1.delete.called
+    assert not mock_snapshot2.delete.called
+    assert not popped
+
+
 def test_queue_push_snapshot_length_exceeded():
     mock_snapshot1 = mock.MagicMock()
     mock_snapshot1.time = datetime.datetime(2015, 10, 20, 20, 35)

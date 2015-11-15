@@ -92,7 +92,7 @@ class Queue:
         self.length = length if not isinstance(length, str) else int(length)
 
         self.snapshots = []
-        self.timedelta = datetime.timedelta(days=self.delta)
+        self.timedelta = datetime.timedelta(days=self.delta - 0.4)
 
     @classmethod
     def from_textual_spec(cls, textspec):
