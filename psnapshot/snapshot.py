@@ -104,6 +104,10 @@ class Queue:
 
         raise AttributeError('textspec cannot be parsed.')
 
+    def snapshot_time_acceptable(self, time):
+        """Returns flag if given snapshot is old enough to be entered in this queue."""
+        return not self.snapshots or (time - self.snapshots[0].time >= self.timedelta)
+
     def push_snapshots(self, snapshots):
         """Pushes new snapshots to beginning of this queue and returns the snapshots falling off the other end."""
 
@@ -116,7 +120,7 @@ class Queue:
         """Pushes a new snapshot to beginning of queue and returns the snapshots falling off the other end."""
 
         # snapshots are only accepted if the newest one is old enough with respect to specified delta time:
-        if not self.snapshots or (snapshot.time - self.snapshots[0].time >= self.timedelta):
+        if self.snapshot_time_acceptable(snapshot.time):
             _logger.info('Accepting snapshot {s} in queue {q}.'.format(s=snapshot.name, q=self.name))
             self.snapshots.insert(0, snapshot)
             snapshot.move(self.name)
@@ -221,9 +225,8 @@ class Organizer:
         if self.snapshots_time:
             _logger.debug('Destination folder timestamp: {0:%Y%m%d%H%M%S}.'.format(self.snapshots_time))
 
-        delta = self.queues[0].delta
-        if self.snapshots_time and (srcdir_time < self.snapshots_time + datetime.timedelta(days=delta)):
-            _logger.info('Skipping snapshot creation since the latest one is not {} days older than source.'.format(delta))
+        if not self.queues[0].snapshot_time_acceptable(srcdir_time):
+            _logger.info('Skipping snapshot creation since the latest one is not old enough.')
             return
 
         name = Snapshot.build_name(self.queues[0].name, srcdir_time)
